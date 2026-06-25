@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Demographic Bias in Open-Source Facial Recognition Embeddings</title>
+<style>
+  @page { size: letter; margin: 0.85in 0.9in; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font: 11.2pt/1.55 "Georgia", "Times New Roman", serif;
+    color: #1a1a1a; margin: 0;
+  }
+  h1, h2, h3, .title, .meta, figcaption, th, .abstract-label, caption {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+  /* Title block */
+  .cover { margin-bottom: 6pt; }
+  .kicker { color: #0b5cad; font-size: 9.5pt; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; margin-bottom: 8pt; }
+  .title { font-size: 22pt; font-weight: 800; line-height: 1.15; margin: 0 0 10pt; color: #111; }
+  .meta { font-size: 10pt; color: #444; border-top: 2px solid #111; border-bottom: 1px solid #ccc;
+    padding: 7pt 0; margin-bottom: 16pt; }
+  .meta strong { color: #111; }
+  /* Abstract */
+  .abstract { background: #f5f7fa; border: 1px solid #e1e6ed; border-radius: 6px;
+    padding: 12pt 16pt; margin-bottom: 16pt; }
+  .abstract-label { font-size: 9pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: #0b5cad; margin-bottom: 4pt; }
+  .abstract p { margin: 0; font-size: 10.4pt; }
+  /* Headings */
+  h2 { font-size: 13.5pt; margin: 20pt 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid #d8dde4;
+    color: #0b3a66; }
+  h3 { font-size: 11.5pt; margin: 13pt 0 3pt; color: #1a1a1a; }
+  p { margin: 0 0 8pt; text-align: justify; }
+  ul, ol { margin: 0 0 8pt; padding-left: 18pt; }
+  li { margin-bottom: 3pt; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 9.6pt;
+    background: #eef1f5; padding: 0.5pt 3pt; border-radius: 3px; }
+  /* Figures & tables */
+  figure { margin: 12pt 0; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid #e1e6ed; border-radius: 4px; }
+  figure.half img { max-width: 49%; }
+  figcaption { font-size: 9pt; color: #555; margin-top: 4pt; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 9.8pt;
+    page-break-inside: avoid; font-family: "Helvetica Neue", Arial, sans-serif; }
+  caption { font-size: 9pt; color: #555; text-align: left; margin-bottom: 4pt; font-weight: 600; }
+  th, td { padding: 4.5pt 8pt; border-bottom: 1px solid #dce1e8; text-align: left; }
+  thead th { border-bottom: 1.5px solid #111; color: #0b3a66; font-size: 9pt;
+    text-transform: uppercase; letter-spacing: .03em; }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { font-weight: 700; border-top: 1px solid #aaa; }
+  .callout { background: #fff8ec; border-left: 3px solid #e0922f; padding: 9pt 14pt;
+    margin: 12pt 0; font-size: 10.2pt; page-break-inside: avoid; }
+  .callout strong { color: #9a5a00; }
+  .pagebreak { page-break-before: always; }
+  .refs { font-size: 9.4pt; }
+  .refs p { padding-left: 20pt; text-indent: -20pt; margin-bottom: 5pt; text-align: left; }
+  .footnote { font-size: 9pt; color: #666; border-top: 1px solid #ddd; margin-top: 18pt; padding-top: 6pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kicker">EAI6400 · AI Ethics &amp; Governance · Final Project</div>
+  <div class="title">Demographic Bias in Contemporary Open-Source<br>Facial Recognition Embeddings (ArcFace &amp; ViT)</div>
+  <div class="meta">
+    <strong>Finn Pounds</strong> &nbsp;·&nbsp; 2025 &nbsp;·&nbsp;
+    Code &amp; data: <strong>github.com/finnpounds/face-embedding-bias</strong>
+  </div>
+</div>
+
+<div class="abstract">
+  <div class="abstract-label">Abstract</div>
+  <p>Open-source face-recognition models are now a few package installs from
+  production, yet the embeddings they emit can quietly encode protected
+  attributes that neither model was asked to learn. This study quantifies racial
+  demographic leakage in two widely used, freely available embedding models — the
+  CNN-based <strong>ArcFace</strong> and the general-purpose <strong>Vision
+  Transformer (ViT)</strong> — on a race-balanced subset of the FairFace dataset
+  (6,821 aligned faces across seven groups). Using cosine-similarity gaps, nearest-neighbor
+  recovery, and held-out linear probes, I show that race is linearly recoverable
+  from both embedding spaces far above chance: held-out one-vs-rest AUC reaches
+  <strong>0.85 for ArcFace and 0.90 for ViT</strong>. Strikingly, the
+  general-purpose ViT — never trained on faces — leaks <em>more</em> demographic
+  signal than the face-specialized ArcFace. I also document and correct an
+  input-normalization bug in the original pipeline that had been feeding distorted
+  crops to both models. I close with the compliance implications under GDPR, CCPA,
+  and the NIST AI Risk Management Framework, and practical guidance for small teams
+  deploying these tools.</p>
+</div>
+
+<h2>1. Introduction</h2>
+<p>Facial-recognition technology has become trivially accessible. Through
+open-source libraries such as InsightFace (ArcFace) and the Hugging Face model
+hub (ViT), a single developer can integrate state-of-the-art face embeddings into
+a product in an afternoon. That accessibility democratizes a powerful capability —
+and simultaneously distributes its risks to teams that may have neither the
+resources nor the awareness to audit what these models encode.</p>
+
+<p>The central concern of this project is <em>demographic leakage</em>: the degree
+to which a model's embedding vector — a numeric fingerprint of a face — carries
+recoverable information about a sensitive attribute such as race, even when the
+model was never trained to represent it. Leakage matters because embeddings rarely
+stay put. They are stored, compared, clustered, and shipped between services. If
+race is recoverable from an embedding, then any system that retains those vectors
+is, in effect, processing racial data — frequently without the operator realizing
+it, documenting it, or obtaining consent for it.</p>
+
+<p>These are not abstract risks. Face embeddings increasingly underpin
+consequential systems across sectors:</p>
+<ul>
+  <li><strong>Finance:</strong> Know-Your-Customer (KYC) and identity verification,
+  where disparate error rates can translate into unlawful profiling or denied access.</li>
+  <li><strong>Healthcare:</strong> patient-intake kiosks, where misidentification can
+  cause privacy breaches or clinical errors.</li>
+  <li><strong>Retail &amp; customer service:</strong> camera-based loyalty programs and
+  "smart" kiosks that may entrench discriminatory treatment.</li>
+  <li><strong>Energy, manufacturing &amp; agriculture:</strong> site access and operator
+  verification, where systematic failures can disadvantage specific groups.</li>
+</ul>
+
+<p>This study has two goals: (1) to <strong>quantify and visualize</strong>
+demographic bias in the embeddings of two leading open-source models, and (2) to
+translate those measurements into <strong>practical, regulation-aware guidance</strong>
+for the small teams most likely to deploy them without a dedicated fairness review.</p>
+
+<h2>2. Background: ArcFace (CNN) vs. ViT (Transformer)</h2>
+<p>The two models embed faces into high-dimensional vector spaces using
+fundamentally different architectures and training objectives.</p>
+
+<p><strong>ArcFace</strong> is a convolutional network trained specifically for face
+recognition with an additive angular-margin loss that maximizes the angular
+separation between <em>identities</em>. Because its entire objective is to tell
+individuals apart, ArcFace embeddings strongly encode identity — and, as a
+by-product, often carry demographic signal. I use the <code>buffalo_l</code>
+checkpoint shipped with InsightFace, which produces 512-dimensional unit-norm
+embeddings.</p>
+
+<p><strong>ViT-Base</strong> is a Vision Transformer pretrained on ImageNet-21k for
+general image understanding, not faces. It divides an image into patches and
+attends over them, learning broad visual features with no identity- or
+demographic-specific objective. I take the <code>[CLS]</code> token of
+<code>vit-base-patch16-224-in21k</code> as a 768-dimensional embedding and
+L2-normalize it so cosine geometry is comparable to ArcFace.</p>
+
+<p>The contrast is the point: one model is purpose-built for faces and explicitly
+optimized to separate people; the other is a generic feature extractor that has
+never seen a face-recognition label. Comparing their leakage isolates how much
+demographic encoding is intrinsic to learned visual representations versus
+introduced by face-specific training.</p>
+
+<h2>3. Data &amp; Methodology</h2>
+<h3>3.1 Dataset</h3>
+<p>I use a race-balanced subset of <strong>FairFace</strong> (Kärkkäinen &amp; Joo,
+2021), a dataset explicitly constructed for balanced representation across race,
+gender, and age. Streaming the dataset, I retain the first 1,000 images for each of
+its seven race categories — Black, East Asian, Indian, Latino Hispanic, Middle
+Eastern, Southeast Asian, and White — for 7,000 images total. The balance is
+deliberate: it removes sample-size confounds so that any measured separability
+reflects the embeddings, not skewed class priors.</p>
+
+<p>FairFace's seven categories are a coarse social construct, not ground truth about
+individuals. The object of study here is leakage of a <em>labeled, sensitive
+attribute</em>, not an endorsement of these categories as natural kinds.</p>
+
+<h3>3.2 Pipeline</h3>
+<p>Each image is aligned and cropped to 112×112 with MTCNN, then embedded twice —
+once by ArcFace and once by ViT. Of 7,000 images, MTCNN successfully aligned
+<strong>6,821</strong>. From the resulting embeddings I compute three families of
+measurements:</p>
+<ul>
+  <li><strong>Directional leakage</strong> — the <em>cosine gap</em> (mean
+  within-race similarity minus mean between-race similarity), 5-nearest-neighbor
+  race-recovery accuracy, and a full-data linear-probe AUC.</li>
+  <li><strong>Held-out separability</strong> — a stratified 70/30 split with a
+  cross-validated L2-regularized one-vs-rest logistic probe, scored on unseen data.
+  This is the most honest measure of how reliably race can be inferred.</li>
+  <li><strong>Geometry &amp; detector fairness</strong> — per-group within-race
+  cosine similarity, 2-D UMAP projections, and the MTCNN alignment keep-rate per
+  group (a fairness check on the pipeline itself, not just the models).</li>
+</ul>
+
+<figure>
+  <img src="../figures/sample_faces_by_race.png" alt="MTCNN-aligned FairFace samples by group">
+  <figcaption><strong>Figure 1.</strong> MTCNN-aligned sample faces, one row per FairFace group.</figcaption>
+</figure>
+
+<h2>4. Results &amp; Discussion</h2>
+
+<h3>4.1 Race is linearly recoverable from both embeddings</h3>
+<p>The headline result is unambiguous: a simple linear probe recovers race from
+both embedding spaces with high reliability on held-out data. Per-group one-vs-rest
+AUC ranges from 0.73 to 0.95, with macro averages of <strong>0.85 (ArcFace)</strong>
+and <strong>0.90 (ViT)</strong> against a 0.5 chance baseline.</p>
+
+<figure>
+  <img src="../figures/per_race_auc.png" alt="Per-race held-out AUC bar chart">
+  <figcaption><strong>Figure 2.</strong> Held-out one-vs-rest AUC by group. Every bar
+  sits well above the 0.5 chance line; the dashed line marks chance.</figcaption>
+</figure>
+
+<table>
+  <caption>Table 1 — Held-out one-vs-rest AUC (stratified 70/30 split, CV-tuned L2 probe).</caption>
+  <thead><tr><th>Group</th><th>ArcFace</th><th>ViT</th></tr></thead>
+  <tbody>
+    <tr><td>Black</td><td>0.92</td><td>0.95</td></tr>
+    <tr><td>East Asian</td><td>0.87</td><td>0.93</td></tr>
+    <tr><td>Indian</td><td>0.87</td><td>0.92</td></tr>
+    <tr><td>Latino Hispanic</td><td>0.73</td><td>0.79</td></tr>
+    <tr><td>Middle Eastern</td><td>0.83</td><td>0.89</td></tr>
+    <tr><td>Southeast Asian</td><td>0.86</td><td>0.89</td></tr>
+    <tr><td>White</td><td>0.84</td><td>0.91</td></tr>
+    <tr><td>Macro average</td><td>0.85</td><td>0.90</td></tr>
+  </tbody>
+</table>
+
+<p>Two findings deserve emphasis. First, <strong>the general-purpose ViT leaks more
+than the face-specialized ArcFace</strong> on every group but one. A model never
+trained on faces, never given an identity label, still encodes race more legibly
+than a model engineered specifically to distinguish people. This suggests that
+demographic structure is woven into generic visual features themselves, not merely
+introduced by face-recognition training. Second, leakage is <strong>uneven across
+groups</strong>: some demographics (e.g., Black, East Asian) are far more inferable
+than others (e.g., Latino Hispanic), meaning the privacy and disparate-impact risk
+is itself unequally distributed.</p>
+
+<h3>4.2 Directional leakage and embedding geometry</h3>
+<table>
+  <caption>Table 2 — Directional-leakage summary across the full sample.</caption>
+  <thead><tr><th>Model</th><th>Cosine gap</th><th>kNN-5 acc.</th><th>Linear-probe AUC</th></tr></thead>
+  <tbody>
+    <tr><td>ArcFace</td><td>0.014</td><td>0.63</td><td>0.91</td></tr>
+    <tr><td>ViT</td><td>0.077</td><td>0.68</td><td>0.92</td></tr>
+  </tbody>
+</table>
+
+<p>A telling difference appears in <em>within-race cosine similarity</em>. ViT
+clusters same-group faces tightly (0.27–0.34), while ArcFace spreads them apart
+(0.07–0.09). This is exactly what ArcFace's angular-margin training is designed to
+do — push individual identities away from one another — yet race remains linearly
+recoverable from ArcFace at 0.85 AUC <em>despite</em> that dispersion. The
+demographic signal is not a side effect of faces simply being close together; it is
+encoded along specific, learnable directions. The UMAP projections (Figure 3) make
+the structure visible: both spaces show demographic organization, with ViT showing
+notably more coherent group regions.</p>
+
+<figure>
+  <img src="../figures/umap_vit.png" alt="UMAP of ViT embeddings" style="max-width:62%">
+  <figcaption><strong>Figure 3.</strong> UMAP projection of ViT embeddings, colored by
+  group. Visible demographic clustering emerges with no face- or race-specific training.</figcaption>
+</figure>
+
+<h3>4.3 Detector and alignment fairness</h3>
+<p>MTCNN's alignment keep-rate stayed in a tight band of <strong>0.965–0.984</strong>
+across all seven groups, so the upstream face detector is not a major source of
+disparity in this study — the leakage lives in the embeddings, not in who gets
+detected. Even so, in a large-scale deployment, sub-percentage differences in
+detection success compound into materially different failure rates across groups,
+and would themselves warrant monitoring under anti-discrimination obligations.</p>
+
+<h3>4.4 A corrected input-normalization bug</h3>
+<div class="callout">
+  <strong>Methodological note.</strong> While refactoring the original notebook into
+  a reproducible pipeline, I found that the alignment step was feeding
+  <em>distorted</em> images to both models. <code>facenet-pytorch</code>'s MTCNN
+  defaults to <code>post_process=True</code>, which standardizes crops to roughly
+  [−1, 1]; the original code then rescaled by ×255 and clamped to [0, 255], which
+  zeroed out ~47% of every crop's pixels and skewed its color balance before either
+  model saw it. The demographic-leakage conclusion survived the bug — the distortion
+  is fairly consistent across faces — but the inputs were wrong. Correcting it
+  (<code>post_process=False</code>, no erroneous rescale) <em>raised</em> measured
+  leakage substantially: macro AUC moved from 0.75→0.85 (ArcFace) and 0.77→0.90
+  (ViT). All figures and tables in this report use the corrected pipeline.
+</div>
+<p>The lesson generalizes beyond this project: preprocessing bugs can silently
+weaken a model's apparent behavior, and a fairness audit is only as trustworthy as
+the inputs feeding it. Reproducing and inspecting the data path is part of the
+audit, not a preliminary to it.</p>
+
+<h2>5. Regulatory &amp; Compliance Implications</h2>
+<p>The demonstrated presence of recoverable demographic signal in both embedding
+families has direct consequences for any regulated deployment:</p>
+<ul>
+  <li><strong>GDPR (EU), Article 9.</strong> Racial or ethnic origin is
+  special-category data whose processing is restricted absent explicit consent or a
+  specific legal basis. Embeddings from which race is recoverable at 0.85–0.90 AUC
+  can pull a system into this scope even if race is never explicitly collected,
+  potentially triggering a Data Protection Impact Assessment (Art. 35).</li>
+  <li><strong>CCPA (California).</strong> Biometric information and the inferences
+  drawn from it must be disclosed, minimized, and made subject to opt-out.
+  Demographic inferences derivable from stored embeddings should be documented and
+  governed accordingly.</li>
+  <li><strong>NIST AI Risk Management Framework.</strong> The AI-RMF calls for
+  measuring, mapping, and managing fairness risk before deployment. The metrics in
+  this report are an example of exactly the kind of measurement the framework
+  expects — and of the bias it expects teams to surface.</li>
+</ul>
+
+<h2>6. Recommendations for Small Teams</h2>
+<ol>
+  <li><strong>Measure leakage before shipping.</strong> A held-out linear probe over
+  a balanced sample is cheap and decisive; make it a standard pre-deployment gate.</li>
+  <li><strong>Treat embeddings as sensitive data.</strong> "We don't store race" is
+  not a defense when the vectors you do store make race recoverable. Apply the same
+  retention, access, and disclosure controls you would to explicit demographic data.</li>
+  <li><strong>Prefer the least-capable model that meets the need.</strong> A
+  general-purpose backbone is not automatically "safer" than a task-specific one — here
+  the generic ViT leaked more. Evaluate, don't assume.</li>
+  <li><strong>Audit the whole pipeline, not just the model.</strong> Preprocessing and
+  detection steps carry their own fairness and correctness risks (Section 4.4).</li>
+</ol>
+
+<h2>7. Limitations</h2>
+<ul>
+  <li>"Race" is FairFace's coarse 7-way annotation, not a measurement of identity;
+  results describe leakage of that label, nothing more.</li>
+  <li>1,000 images per group is sufficient to demonstrate clear effects but is not a
+  population sample; absolute magnitudes will shift with more data.</li>
+  <li>The probes here are <em>linear</em>. Non-linear attacks would likely extract
+  more, so these figures are best read as a lower bound on recoverability.</li>
+  <li>Findings characterize two specific checkpoints; other models and versions will
+  differ and should be measured individually.</li>
+</ul>
+
+<h2>8. Conclusion</h2>
+<p>Both a face-specialized CNN and a general-purpose transformer encode race in
+their embeddings strongly enough that a trivial linear model recovers it on unseen
+data — at 0.85 and 0.90 AUC respectively, with the general-purpose model leaking
+more. Demographic information is more intrinsic to learned visual representations,
+and more easily extracted, than a casual integrator would assume. As these
+freely available tools spread into finance, healthcare, retail, and industrial
+settings, explicit bias measurement should become a standard, documented step
+before deployment — both to meet the expectations of GDPR, CCPA, and the NIST
+AI-RMF, and simply to use this technology responsibly. The tools are excellent;
+the obligation is to handle what they quietly encode with care.</p>
+
+<h2 class="refs-head">References</h2>
+<div class="refs">
+  <p>Deng, J., Guo, J., Xue, N., &amp; Zafeiriou, S. (2019). ArcFace: Additive Angular
+  Margin Loss for Deep Face Recognition. <em>CVPR</em>. https://arxiv.org/abs/1801.07698</p>
+  <p>Dosovitskiy, A., et al. (2021). An Image is Worth 16×16 Words: Transformers for
+  Image Recognition at Scale. <em>ICLR</em>. https://arxiv.org/abs/2010.11929</p>
+  <p>Kärkkäinen, K., &amp; Joo, J. (2021). FairFace: Face Attribute Dataset for Balanced
+  Race, Gender, and Age. <em>WACV</em>. https://arxiv.org/abs/1908.04913</p>
+  <p>Kotwal, K., &amp; Marcel, S. (2025). Review of Demographic Fairness in Face
+  Recognition. https://arxiv.org/abs/2502.02309</p>
+  <p>National Institute of Standards and Technology. (2023). Artificial Intelligence
+  Risk Management Framework (AI RMF 1.0). U.S. Department of Commerce.</p>
+  <p>InsightFace. (2023). InsightFace Python Library, v0.7.3.
+  https://github.com/deepinsight/insightface</p>
+</div>
+
+<div class="footnote">
+  Reproducible code, data-download script, figures, and metrics:
+  <strong>github.com/finnpounds/face-embedding-bias</strong>. All results generated by
+  <code>src/bias_pipeline.py</code> on a balanced FairFace subset (6,821 aligned faces).
+</div>
+
+</body>
+</html>

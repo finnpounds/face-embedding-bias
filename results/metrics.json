@@ -1,0 +1,66 @@
+{
+  "directional_leakage": {
+    "arc": {
+      "cosine_gap": 0.0143,
+      "knn5": 0.6338,
+      "probe_auc": 0.9113
+    },
+    "vit": {
+      "cosine_gap": 0.0768,
+      "knn5": 0.682,
+      "probe_auc": 0.9224
+    }
+  },
+  "holdout_ovsr_auc": {
+    "arc": {
+      "Black": 0.9194,
+      "East Asian": 0.8736,
+      "Indian": 0.87,
+      "Latino Hispanic": 0.7349,
+      "Middle Eastern": 0.8251,
+      "Southeast Asian": 0.8598,
+      "White": 0.8394,
+      "macro_avg": 0.846
+    },
+    "vit": {
+      "Black": 0.9528,
+      "East Asian": 0.9303,
+      "Indian": 0.917,
+      "Latino Hispanic": 0.7871,
+      "Middle Eastern": 0.8929,
+      "Southeast Asian": 0.8948,
+      "White": 0.9141,
+      "macro_avg": 0.8984
+    }
+  },
+  "within_race_similarity": {
+    "arc": {
+      "Black": 0.0808,
+      "East Asian": 0.0875,
+      "Indian": 0.0783,
+      "Latino Hispanic": 0.077,
+      "Middle Eastern": 0.072,
+      "Southeast Asian": 0.0929,
+      "White": 0.0676
+    },
+    "vit": {
+      "Black": 0.3383,
+      "East Asian": 0.3374,
+      "Indian": 0.3126,
+      "Latino Hispanic": 0.2847,
+      "Middle Eastern": 0.284,
+      "Southeast Asian": 0.3031,
+      "White": 0.2674
+    }
+  },
+  "detector_keep_rate": {
+    "Black": 0.967,
+    "East Asian": 0.974,
+    "Indian": 0.981,
+    "Latino Hispanic": 0.984,
+    "Middle Eastern": 0.965,
+    "Southeast Asian": 0.98,
+    "White": 0.97
+  },
+  "n_faces": 6821
+}

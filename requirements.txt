@@ -1,0 +1,31 @@
+# Core dependencies for the bias-analysis pipeline.
+# For an exact, reproducible environment use requirements-lock.txt instead.
+
+# numerics / data
+numpy==1.26.4
+pandas==2.3.0
+scikit-learn==1.7.0
+scipy==1.15.3
+
+# deep-learning runtimes
+torch==2.7.1
+torchvision==0.22.1
+onnxruntime==1.22.0
+
+# models
+facenet-pytorch==2.5.3      # MTCNN face alignment
+insightface==0.7.3          # ArcFace (buffalo_l) embeddings
+transformers==4.53.0        # ViT embeddings
+datasets==3.6.0             # streaming the FairFace subset
+huggingface-hub==0.33.0
+
+# imaging / viz
+pillow==10.2.0
+matplotlib==3.10.3
+seaborn==0.13.2
+umap-learn==0.5.7
+tqdm==4.67.1
+
+# notebook (optional, for running the .ipynb)
+jupyterlab==4.4.3
+tabulate==0.10.0            # pandas .to_markdown() in the pipeline
